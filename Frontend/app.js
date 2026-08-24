@@ -220,6 +220,8 @@ captureBtn?.addEventListener("click", (e) => {
 
 // GPS Tracking
 
+let proximityTimer = null;
+
 function startGPS() {
   gpsWatch = navigator.geolocation.watchPosition(
     (position) => {
@@ -236,6 +238,19 @@ function startGPS() {
       gpsStatus.innerHTML = "🔴 Error";
     },
   );
+
+  // Point 2 & 3: Check for existing hazards every 4 seconds (even if camera is not capturing)
+  proximityTimer = setInterval(() => {
+      if(!currentLocation) return;
+      fetch(`${API_BASE}/check-warning?lat=${currentLocation.lat}&lng=${currentLocation.lng}`)
+        .then(res => res.json())
+        .then(data => {
+            if(data.warning) {
+                status.innerHTML = "🚨 EXISTING HAZARD AHEAD";
+                showWarning(0.95, "NEARBY EXISTING HAZARD");
+            }
+        }).catch(e => console.log(e));
+  }, 4000);
 }
 
 function stopGPS() {
@@ -243,6 +258,10 @@ function stopGPS() {
     navigator.geolocation.clearWatch(gpsWatch);
 
     gpsWatch = null;
+  }
+  if (proximityTimer) {
+    clearInterval(proximityTimer);
+    proximityTimer = null;
   }
 }
 

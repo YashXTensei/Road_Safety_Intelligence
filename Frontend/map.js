@@ -84,13 +84,15 @@ fetch("http://127.0.0.1:8000/hazards")
   });
 
 // User Location
-
 let userMarker = null;
+let globalUserLat = 0;
+let globalUserLng = 0;
 
 function updateUserLocation(position) {
   const lat = position.coords.latitude;
-
   const lng = position.coords.longitude;
+  globalUserLat = lat;
+  globalUserLng = lng;
 
   if (!userMarker) {
     userMarker = L.marker([lat, lng], {
@@ -138,3 +140,75 @@ if (navigator.geolocation) {
 }
 
 console.log("Map Loaded");
+
+// Point 1: Custom Destination + Route Logic (Hiding Default UI)
+let routingControl = null;
+
+// Recenter Button Logic
+document.getElementById('recenterBtn').addEventListener('click', () => {
+    if (globalUserLat !== 0) {
+        map.setView([globalUserLat, globalUserLng], 15);
+    } else {
+        alert("Waiting for your GPS location...");
+    }
+});
+
+// Custom Search Box Logic
+document.getElementById('routeBtn').addEventListener('click', () => {
+    const dest = document.getElementById('destInput').value;
+    
+    if (!dest) {
+        return alert("Please enter a destination!");
+    }
+    if (globalUserLat === 0) {
+        return alert("Waiting for your GPS location...");
+    }
+
+    // 1. Fetch Coordinates for the entered city/place using Nominatim API
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${dest}`)
+    .then(res => res.json())
+    .then(data => {
+        if (data.length === 0) {
+            return alert("Location not found! Try a different name.");
+        }
+        
+        const destLat = data[0].lat;
+        const destLng = data[0].lon;
+
+        if (routingControl) {
+            map.removeControl(routingControl);
+        }
+
+        // 2. Draw Route but HIDE the white box (show: false)
+        routingControl = L.Routing.control({
+            waypoints: [
+                L.latLng(globalUserLat, globalUserLng),
+                L.latLng(destLat, destLng)
+            ],
+            show: false, // THIS HIDES THE CLUNKY WHITE BOX
+            addWaypoints: false,
+            routeWhileDragging: false,
+            lineOptions: {
+                styles: [{color: '#2196F3', opacity: 0.8, weight: 6}]
+            },
+            createMarker: function(i, wp, nWps) {
+                if (i === nWps - 1) { 
+                    // Only show a marker at the final destination
+                    return L.marker(wp.latLng).bindPopup("📍 Destination: " + dest);
+                }
+                return null; 
+            }
+        }).addTo(map);
+
+        // 3. Zoom map to fit the entire route
+        const bounds = new L.featureGroup([
+            L.marker([globalUserLat, globalUserLng]), 
+            L.marker([destLat, destLng])
+        ]);
+        map.fitBounds(bounds.getBounds(), {padding: [50, 50]});
+    })
+    .catch(err => {
+        console.log(err);
+        alert("Error finding route.");
+    });
+});

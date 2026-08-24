@@ -8,6 +8,8 @@
 
     <link rel="stylesheet" href="detection.css" />
 
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
@@ -141,6 +143,11 @@
       <!-- Hidden Canvas used to grab frames from the video stream -->
       <canvas id="canvas" hidden></canvas>
 
+      <!-- ================= MINI MAP (Dashcam View) ================= -->
+      <div style="width: min(850px, 100%); margin: 30px auto; height: 300px; border-radius: 22px; overflow: hidden; border: 2px solid #e8edef; box-shadow: 0 10px 25px rgba(21, 44, 61, 0.1);">
+        <div id="minimap" style="width: 100%; height: 100%;"></div>
+      </div>
+
       <!-- ================= HAZARD SHOWCASE ================= -->
 
       <div class="hazard-section">
@@ -241,6 +248,51 @@
     </div>
 
     <!-- Keep existing JavaScript functionality -->
+
     <script src="app.js"></script>
+
+    <!-- Mini Map Logic -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+      // Initialize Mini Map
+      const minimap = L.map('minimap').setView([28.6139, 77.2090], 14);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(minimap);
+
+      const hazardIconMini = L.icon({
+        iconUrl: 'https://cdn-icons-png.flaticon.com/512/564/564619.png',
+        iconSize: [35, 35]
+      });
+
+      let userMarkerMini = null;
+
+      // Fetch all potholes and plot as red pins
+      fetch('http://127.0.0.1:8000/hazards')
+        .then(res => res.json())
+        .then(data => {
+          data.data.forEach(h => {
+            if(h.latitude !== 0) {
+              L.marker([h.latitude, h.longitude], {icon: hazardIconMini}).addTo(minimap);
+            }
+          });
+        });
+
+      // Track user live location and follow them on the mini map
+      if(navigator.geolocation) {
+        navigator.geolocation.watchPosition((pos) => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          
+          if(!userMarkerMini) {
+              userMarkerMini = L.circleMarker([lat, lng], {
+                  color: 'white', fillColor: '#2196F3', fillOpacity: 1, radius: 8, weight: 2
+              }).addTo(minimap).bindPopup("You are driving here");
+          } else {
+              userMarkerMini.setLatLng([lat, lng]);
+          }
+          minimap.setView([lat, lng], 15);
+        }, (err) => console.log(err), {enableHighAccuracy: true});
+      }
+    </script>
+
   </body>
 </html>

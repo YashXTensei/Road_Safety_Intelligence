@@ -5,8 +5,8 @@ import shutil
 import os
 import time
 
-# Now importing our new MongoDB functions
-from database import init_db, save_pothole, get_all_hazards, get_nearby_hazards
+# Now importing our advanced MongoDB functions
+from database import init_db, save_pothole, get_all_hazards, get_nearby_hazards, decay_hazard_confidence
 from ai_model import analyze_image_for_pothole
 
 app = FastAPI(title="Road Safety AI API")
@@ -39,7 +39,8 @@ async def report_hazard(
     image: UploadFile = File(...)
 ):
     """
-    Receives an image and GPS, analyzes via AI, and saves if pothole is found.
+    Receives an image and GPS, analyzes via AI.
+    Handles Point 5 (Duplicates) & Point 6 (Verification) automatically.
     """
     filename = f"uploads/{int(time.time())}_{image.filename}"
     with open(filename, "wb") as buffer:
@@ -48,18 +49,21 @@ async def report_hazard(
     # Run AI Model
     ai_result = analyze_image_for_pothole(filename)
     
-    # Save to MongoDB if pothole is detected
     if ai_result["detected"]:
+        # POINT 5: Duplicate Control is handled inside save_pothole
         save_pothole(lat, lng, ai_result["confidence"], filename)
         return JSONResponse({
             "status": "success",
-            "message": "Pothole detected and saved to MongoDB!",
+            "message": "Pothole detected and processed!",
             "data": ai_result
         })
     else:
+        # POINT 6: Hazard Verification (Decay)
+        # If road is clear, we decrease confidence of any expected potholes nearby
+        decay_hazard_confidence(lat, lng)
         return JSONResponse({
             "status": "clear",
-            "message": "No pothole detected in this image.",
+            "message": "No pothole detected. Hazard verification updated.",
             "data": ai_result
         })
 
