@@ -27,9 +27,14 @@
         <span>Drive<span>Safe</span> AI</span>
       </div>
 
-      <div class="nav-status">
-        <span class="dot"></span>
-        System Online
+      <div class="nav-status" style="display: flex; gap: 15px;">
+        <div id="globalGpsStatus" style="color: #ff9800; font-weight: bold; font-family: monospace; font-size: 0.9em; background: rgba(255,152,0,0.1); padding: 4px 8px; border-radius: 4px;">
+          <i class="fa-solid fa-satellite-dish"></i> GPS: Locating...
+        </div>
+        <div>
+          <span class="dot"></span>
+          System Online
+        </div>
       </div>
     </nav>
 
@@ -311,7 +316,7 @@
       let userMarkerMini = null;
 
       // Fetch all potholes and plot as red pins
-      fetch('https://road-safety-intelligence-backend-38aw.onrender.com')
+      fetch('https://road-safety-intelligence-backend-38aw.onrender.com/hazards')
         .then(res => res.json())
         .then(data => {
           data.data.forEach(h => {

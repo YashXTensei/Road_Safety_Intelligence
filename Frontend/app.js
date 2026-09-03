@@ -259,20 +259,37 @@ captureBtn?.addEventListener("click", (e) => {
 let proximityTimer = null;
 
 function startGPS() {
+  const globalGpsStatus = document.getElementById("globalGpsStatus");
+  
   gpsWatch = navigator.geolocation.watchPosition(
     (position) => {
       currentLocation = {
         lat: position.coords.latitude,
-
         lng: position.coords.longitude,
       };
 
-      gpsStatus.innerHTML = "🟢 Connected";
+      const latStr = currentLocation.lat.toFixed(4);
+      const lngStr = currentLocation.lng.toFixed(4);
+      
+      // Update Driving Mode Stats
+      if(gpsStatus) gpsStatus.innerHTML = `🟢 ${latStr}, ${lngStr}`;
+      
+      // Update Top Nav Bar (Global)
+      if(globalGpsStatus) {
+        globalGpsStatus.innerHTML = `<i class="fa-solid fa-satellite-dish"></i> 🟢 ${latStr}, ${lngStr}`;
+        globalGpsStatus.style.color = "#4CAF50";
+        globalGpsStatus.style.background = "rgba(76, 175, 80, 0.1)";
+      }
     },
-
     (error) => {
-      gpsStatus.innerHTML = "🔴 Error";
+      if(gpsStatus) gpsStatus.innerHTML = "🔴 No Signal";
+      if(globalGpsStatus) {
+        globalGpsStatus.innerHTML = `<i class="fa-solid fa-satellite-dish"></i> 🔴 GPS Lost`;
+        globalGpsStatus.style.color = "#f44336";
+        globalGpsStatus.style.background = "rgba(244, 67, 54, 0.1)";
+      }
     },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
   );
 
   // Point 2 & 3: Check for existing hazards every 4 seconds (even if camera is not capturing)
@@ -500,3 +517,6 @@ reportForm?.addEventListener("submit", (e) => {
     },
   );
 });
+
+// Auto-start GPS on load
+document.addEventListener('DOMContentLoaded', () => { startGPS(); });
